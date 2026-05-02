@@ -50,10 +50,14 @@ def build_transforms(train: bool):
     ])
 
 
-def get_dataloaders(processed_dir="data/processed", batch_size=64, num_workers=2):
-    train_ds = EuroSATRGB(f"{processed_dir}/train.csv", transform=build_transforms(True))
-    val_ds   = EuroSATRGB(f"{processed_dir}/val.csv",   transform=build_transforms(False))
-    test_ds  = EuroSATRGB(f"{processed_dir}/test.csv",  transform=build_transforms(False))
+def get_dataloaders(processed_dir="data/processed", data_root="data/raw",
+                    batch_size=64, num_workers=2):
+    train_ds = EuroSATRGB(f"{processed_dir}/train.csv", data_root=data_root,
+                          transform=build_transforms(True))
+    val_ds   = EuroSATRGB(f"{processed_dir}/val.csv",   data_root=data_root,
+                          transform=build_transforms(False))
+    test_ds  = EuroSATRGB(f"{processed_dir}/test.csv",  data_root=data_root,
+                          transform=build_transforms(False))
 
     train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True,
                               num_workers=num_workers, pin_memory=True)
