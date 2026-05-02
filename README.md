@@ -1,41 +1,229 @@
-# CSC 587 Final Project
-Sanjana Checker and Sofija Dimitrijevic
+# CSC 587 Final Project: Post-Training Quantization for Satellite Land Cover Classification
 
-## Introduction
-Our project will include 2 challenges, the first of which is land cover classification: identifying what class each pixel is in (e.g. forest, urban, water, etc.) This is a very important problem in remote sensing and has applications in disaster relief, urban planning, and environmental monitoring. Semantic segmentation of satellite imagery is non trivial because models need to understand both global context and fine grained spatial detail at once. The next challenge is deployment: even if a segmentation model is accurate, running it efficiently on edge hardware like drones and satellites requires a small and fast model. We will explore post training quantization (PTQ) to reduce model weights from 32-bit floats to 8-bit integers. We will then measure the accuracy-latency-size tradeoff. 
-The scope of our project includes training a CNN on a satellite dataset, and then exploring post-training quantization as a compression technique and measuring the tradeoffs. The dual focus in this project makes it both practically relevant and experimentally informative. 
+**Authors:** Sanjana Checker, Sofija Dimitrijevic
+**Course:** CSC 587 — Deep Learning
+**Quarter:** Spring 2026
 
-## Related Work
-First, the U-Net paper (Ronneberger et al., 2015) introduced the encoder-decoder architecture with skip connections. This became the main approach for biomedical and satellite image segmentation, and is still a strong baseline today. EfficientNet (Tan & Le, 2019) proposed a compound scaling of CNN width, depth, and resolution. It is used as a lightweight U-Net encoder backbone. 
-As far as segmentation goes, EuroSAT (Helber et al., 2019) introduced benchmark datasets for satellite land cover classification. EuroSAT showed that CNNs trained on Sentinel-2 imagery achieve very strong land use classification performance. Zhao et al. (2023) provide a survey of deep learning approaches to land use and land cover (LULC) classification. They cover CNN, autoencoder, GAN, and RNN approaches across both pixel-level and patch-level classification tasks. The survey shows that even though deep learning has improved LULC performance, there are many challenges around high dimensional remote sensing data and limited labeled samples. 
-Finally, the foundational paper on INT8 quantization of deep networks (Jacob et al., 2018) showed that 8-bit inference can match 32-bit accuracy with minimal degradation on vision tasks. 
+## Overview
 
-## Method
-For our dataset, we aim to use EuroSAT, which is available as a direct download, no GEE needed. EuroSAT has 27,000 labeled 64x64 sentinel-2 image patches across 10 land cover classes. We will use the RGB subset for simplicity, with an 80/10/10 train/val/test split. 
-We will implement a U-Net in PyTorch from scratch with a lightweight EfficientNet-B0 encoder pretrained on imagenet, and a custom decoder with skip connections. This will be part of our novel code contribution since we’re not using a segmentation library end-to-end, we’re building the decoder and training loop ourselves. 
-For training, we will use cross-entropy loss with class weighting to handle any imbalance - this part might take a lot of trial/error. We’ll use Adam optimizer and 30-50 epochs on Colab (should be fine since EuroSAT has small image sizes). 
-After training is complete, we will apply PyTorch’s built in PTQ (torch.quantization) to convert the model down to INT8. We will also try out dynamic quantization as a comparison point. We won’t do any quantization-aware training so that we can really isolate the compression effect. 
-For experiments, we will run the following ablations:
-FP32 baseline vs INT8 static vs INT8 dynamic
-Accuracy (per class and overall), inference latency (ms/image), and model size (MB) for each
-Optional: switch out EfficientNet-B0 for MobileNetV2 encoder and repeat
+This project investigates post-training quantization (PTQ) for satellite land cover classification on the EuroSAT RGB dataset. We implement affine INT8 quantization from scratch in a custom `FakeQuantize` module, compare it head-to-head against PyTorch's built-in PTQ, and use it as the substrate for a layer-wise sensitivity analysis that produces a mixed-precision configuration.
 
-## Evaluation
-Since our project has two phases, we will evaluate using a few strategies for each focus. First, we will evaluate the semantic segmentation quality using well-known metrics, such as mIoU (mean intersection over union), per-class IoU, and more simple pixel accuracy (depending on how much class imbalance we have). mIoU is our primary metric that calculates the overlap between the ground truth and predicted masks for each class (pixel type), averaging for all classes. Zhao et al. discuss this as one of their primary metrics, along with overall accuracy, average accuracy, and F1-score, which we will also use as our evaluation metrics. Finally, we will include a full class confusion matrix to visualize misclassifications.
+The headline contributions are:
 
-For the PTQ focus, we will measure the tradeoff curve based on three configurations: FP32 baseline, INT8 static quantization, and INT8 dynamic quantization. Our quantization approach will follow the integer arithmetic inference framework introduced in Jacob et al. For every configuration, we will report on accuracy through mIoU and ΔmIoU (measures explicit drop relative to FP32 baseline). We will also report which classes suffer the most from quantization by including per-class IoU degradation. For efficiency measurement, we will report on model size (in MB), which is the static model size before and after quantization. Jacob et al. found a roughly 4x compression from FP32 to INT8, and we will verify this holds for the EfficientNet-B0 encoder backbone (Tan & Le, 2019). We will also measure latency (ms/image) on the CPU and peak runtime memory footprint (RAM usage during inference). 
+1. A from-scratch `FakeQuantize` module (affine quantization, fixed scale and zero-point from one-pass calibration) wrapped in `QConv2d` and `QLinear` layers.
+2. A four-way comparison of FP32, PyTorch dynamic PTQ, PyTorch static PTQ, and our FakeQuantize across two architectures (EfficientNet-B0, MobileNetV2).
+3. A layer-wise sensitivity analysis enabled by our custom module, used to construct a mixed-precision configuration that recovers most of the FP32 accuracy at near-INT8 cost.
+4. A per-class degradation analysis tying quantization sensitivity to the semantic structure of EuroSAT's ten land cover classes.
 
-We will have side by side visualizations of segmentation overlays consisting of FP32 vs INT8 predictions on the same image to make differences visually interpretable in the final report. 
+## Repository Structure
 
-## References:
+```
+csc587_finalproj/
+├── data/
+│   ├── raw/                    # EuroSAT RGB (downloaded, not committed)
+│   └── processed/              # train/val/test split CSVs
+├── notebooks/
+│   ├── 01_data_exploration.ipynb
+│   ├── 02_fp32_baselines.ipynb
+│   ├── 03_fakequant_unit_tests.ipynb
+│   ├── 04_quantization_comparison.ipynb
+│   └── 05_layer_sensitivity.ipynb
+├── results/
+│   ├── checkpoints/            # FP32 model weights (.pt, not committed)
+│   ├── figures/                # Final plots for the report
+│   ├── logs/                   # Training logs
+│   └── metrics/                # JSON/CSV metrics per configuration
+├── src/
+│   ├── dataset.py              # EuroSAT dataset and dataloader
+│   ├── make_splits.py          # Generate stratified 80/10/10 split CSVs
+│   ├── models.py               # EfficientNet-B0 and MobileNetV2 wrappers
+│   ├── train.py                # FP32 training loop
+│   ├── fake_quant.py           # Custom FakeQuantize, QConv2d, QLinear
+│   ├── calibrate.py            # Activation range calibration via hooks
+│   ├── quantize.py             # Module-tree replacement for converting FP32 -> INT8
+│   ├── ptq_baselines.py        # PyTorch dynamic and static PTQ wrappers
+│   ├── sensitivity.py          # Layer-wise sensitivity analysis
+│   ├── benchmark.py            # CPU latency and model size measurement
+│   └── evaluate.py             # Accuracy, macro-F1, per-class F1, confusion matrix
+├── .gitignore
+├── README.md
+└── requirements.txt
+```
 
-Ronneberger, O., Fischer, P., & Brox, T. (2015). U-Net: Convolutional networks for biomedical image segmentation. Proceedings of the International Conference on Medical Image Computing and Computer-Assisted Intervention (MICCAI), 9351, 234–241. https://arxiv.org/abs/1505.04597
+## Setup
 
-Helber, P., Bischke, B., Dengel, A., & Borth, D. (2019). EuroSAT: A novel dataset and deep learning benchmark for land use and land cover classification. IEEE Journal of Selected Topics in Applied Earth Observations and Remote Sensing, 12(7), 2217–2226. https://arxiv.org/abs/1709.00029
+### Prerequisites
 
-Zhao, S., Tu, K., Ye, S., Tang, H., Hu, Y., & Xie, C. (2023). Land Use and Land Cover Classification Meets Deep Learning: A Review. Sensors, 23(21), 8966. https://doi.org/10.3390/s23218966
+- Python 3.10+
+- A virtual environment (`.venv/` is gitignored)
+- ~500MB free disk for the EuroSAT dataset
+- Colab or a machine with GPU access (CPU is fine for benchmarking, slow for training)
 
-Tan, M., & Le, Q. V. (2019). EfficientNet: Rethinking model scaling for convolutional neural networks. Proceedings of the 36th International Conference on Machine Learning (ICML), 97, 6105–6114. https://arxiv.org/abs/1905.11946
+### Install
 
-Jacob, B., Kligys, S., Chen, B., Zhu, M., Tang, M., Howard, A., Adam, H., & Kalenichenko, D. (2018). Quantization and training of neural networks for efficient integer-arithmetic-only inference. Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR), 2704–2713. https://arxiv.org/abs/1712.05877
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
 
+`requirements.txt` covers: `torch`, `torchvision`, `numpy`, `pillow`, `scikit-learn`, `matplotlib`, `seaborn`, `tqdm`, `jupyter`.
+
+### Download EuroSAT RGB
+
+```bash
+mkdir -p data/raw data/processed
+cd data/raw
+curl -L -o EuroSAT_RGB.zip https://madm.dfki.de/files/sentinel/EuroSAT.zip
+unzip -q EuroSAT_RGB.zip
+cd ../..
+```
+
+After unzipping, `data/raw/2750/` contains ten class subfolders with ~27,000 total `.jpg` patches at 64×64.
+
+If `madm.dfki.de` is slow, the Zenodo mirror works: `https://zenodo.org/records/7711810/files/EuroSAT_RGB.zip`.
+
+### Generate splits
+
+```bash
+python src/make_splits.py
+```
+
+Produces `data/processed/{train,val,test}.csv` with a deterministic stratified 80/10/10 split (seed 42). Train: ~21,600. Val: ~2,700. Test: ~2,700.
+
+## Project Plan
+
+The project runs over six project weeks (quarter weeks 5–10). Each week has explicit deliverables.
+
+### Week 1 — Data setup and pipeline
+
+**Goal:** Working dataloader, sanity-checked class balance, and the scaffolding for the training loop.
+
+- [ ] Install dependencies and verify GPU access in Colab.
+- [ ] Download EuroSAT RGB to `data/raw/`.
+- [ ] Implement `src/make_splits.py` to produce stratified CSV splits.
+- [ ] Implement `src/dataset.py` with `EuroSATRGB` Dataset class and `get_dataloaders` helper.
+- [ ] Notebook `01_data_exploration.ipynb`: visualize a batch, compute per-class counts, sanity-check the splits.
+
+**Milestone:** Working dataloader, batch visualization, and class-balance stats committed.
+
+### Week 2 — FP32 baselines
+
+**Goal:** Two trained FP32 classifiers with full classification metrics.
+
+- [ ] Implement `src/models.py` with EfficientNet-B0 and MobileNetV2 wrappers (ImageNet pretrained, 10-way classification head).
+- [ ] Implement `src/train.py` (cross-entropy loss, Adam optimizer, 30–50 epochs, early stopping on validation accuracy).
+- [ ] Implement `src/evaluate.py` (accuracy, macro-F1, per-class F1, confusion matrix).
+- [ ] Train both architectures, save checkpoints to `results/checkpoints/`.
+- [ ] Notebook `02_fp32_baselines.ipynb`: full evaluation report with confusion matrices.
+
+**Milestone:** Two FP32 baselines with all classification metrics reported.
+
+**Tuning notes:** Initial learning rate around 1e-3 with a step or cosine schedule. Watch for overfitting — EuroSAT is small, so early stopping matters. Class weighting only if any class drops below ~2,500 train samples.
+
+### Week 3 — Custom FakeQuantize implementation
+
+**Goal:** Working from-scratch quantization module with passing unit tests.
+
+- [ ] Implement `src/fake_quant.py`:
+  - `FakeQuantize` module: forward pass applies `q = round(x / s) + z` and back, no parameter learning.
+  - `QConv2d` and `QLinear` wrappers that quantize both weights and activations.
+  - Fixed `scale` and `zero_point` set externally (no learnable params; this is PTQ, not QAT).
+- [ ] Implement `src/calibrate.py`: forward hooks that record per-tensor activation min/max during a calibration pass over 256 stratified images.
+- [ ] Implement `src/quantize.py`: walk a trained FP32 model's module tree and replace `Conv2d`/`Linear` with their quantized counterparts using the calibrated scales.
+- [ ] Notebook `03_fakequant_unit_tests.ipynb`: verify against `torch.quantize_per_tensor` on synthetic tensors. Round-trip error should be near-zero up to floating-point precision.
+
+**Milestone:** Custom FakeQuantize module with unit tests passing.
+
+**Implementation notes:** Watch out for batch-norm folding (you can either skip it for the first pass and just live with worse calibration, or fold BN into preceding Conv layers as a post-training step). For activations, make sure your hooks handle modules with multiple outputs correctly — wrapping every module is overkill, only wrap `Conv2d` and `Linear`.
+
+### Week 4 — Apply quantization, run all PTQ configurations
+
+**Goal:** Three INT8 configurations evaluated on both architectures.
+
+- [ ] Implement `src/ptq_baselines.py` wrapping `torch.quantization.quantize_dynamic` and the static PTQ workflow.
+- [ ] Apply our FakeQuantize as a forward-pass simulator on both FP32 baselines.
+- [ ] Apply PyTorch dynamic and static PTQ on both architectures.
+- [ ] Evaluate all configurations on the test set; save metrics to `results/metrics/`.
+- [ ] Begin per-class degradation analysis (ΔF1 per class for each configuration).
+- [ ] Notebook `04_quantization_comparison.ipynb`: side-by-side comparison.
+
+**Milestone:** Three INT8 configurations × two architectures = six quantized models evaluated.
+
+**Sanity check:** Our FakeQuantize accuracy should land within ~1–2 percentage points of PyTorch's static PTQ. If it doesn't, the calibration hooks are buggy or the module-tree replacement missed a layer.
+
+### Week 5 — Layer-wise sensitivity and benchmarking
+
+**Goal:** Layer-sensitivity plot, mixed-precision configuration, full tradeoff table.
+
+- [ ] Implement `src/sensitivity.py`: for each quantizable layer in the strongest baseline, quantize that layer alone and measure accuracy drop.
+- [ ] Build a mixed-precision configuration: keep top-K most sensitive layers in FP32, quantize the rest.
+- [ ] Evaluate the mixed-precision model against full INT8 and FP32.
+- [ ] Implement `src/benchmark.py`: CPU latency over 1,000 images with warmup, model size on disk.
+- [ ] Run benchmarks on all configurations; record latency mean/std and disk size.
+- [ ] Begin the final report.
+- [ ] Notebook `05_layer_sensitivity.ipynb`: sensitivity bar plot, mixed-precision results.
+
+**Milestone:** Layer-sensitivity plot, mixed-precision result, full accuracy-latency-size tradeoff table.
+
+**Watch out:** Latency measurements on Colab CPUs are noisy. Run with `num_threads=1` and at least 1,000 iterations after a 100-iteration warmup. Report median or mean ± std.
+
+### Week 6 — Visualizations, report, submit
+
+**Goal:** Final report submitted with all required visualizations.
+
+- [ ] Confusion matrices for FP32 and INT8 side by side, both architectures.
+- [ ] Per-class ΔF1 heatmap across all (architecture, configuration) pairs.
+- [ ] Layer-sensitivity plot (already produced in week 5; polish for the report).
+- [ ] Misclassification grid for the most-degraded class under INT8.
+- [ ] Pareto plot: accuracy vs. model size, accuracy vs. latency, all configurations labeled.
+- [ ] Write up Method, Results, and Discussion sections.
+- [ ] Cross-review between authors. Submit.
+
+**Milestone:** Final code and report submitted.
+
+## Reproducing the Results
+
+Once everything is in place, the full pipeline runs as:
+
+```bash
+# Data
+python src/make_splits.py
+
+# Train FP32 baselines
+python src/train.py --model efficientnet_b0 --epochs 40
+python src/train.py --model mobilenet_v2 --epochs 40
+
+# Quantize and evaluate
+python src/quantize.py --model efficientnet_b0 --method fakequant
+python src/quantize.py --model efficientnet_b0 --method ptq_dynamic
+python src/quantize.py --model efficientnet_b0 --method ptq_static
+python src/quantize.py --model mobilenet_v2 --method fakequant
+python src/quantize.py --model mobilenet_v2 --method ptq_dynamic
+python src/quantize.py --model mobilenet_v2 --method ptq_static
+
+# Layer sensitivity (on the stronger of the two baselines)
+python src/sensitivity.py --model efficientnet_b0
+
+# Benchmarks
+python src/benchmark.py --all
+
+# Evaluate everything and dump metrics
+python src/evaluate.py --all
+```
+
+## Task Split
+
+- **Sanjana** (modeling and implementation, weeks 1–5): data setup, FP32 training, custom FakeQuantize module, PyTorch PTQ baselines, layer-wise sensitivity analysis.
+- **Sofija** (evaluation and reporting, weeks 4–6): per-class degradation analysis, latency and size benchmarking, all visualizations (confusion matrices, ΔF1 heatmaps, layer-sensitivity plots, misclassification grids, Pareto plots), bulk of the final report write-up.
+- **Both:** per-class sensitivity analysis (handoff point), final report cross-review.
+
+## References
+
+- Helber, P., Bischke, B., Dengel, A., & Borth, D. (2019). EuroSAT: A novel dataset and deep learning benchmark for land use and land cover classification. *IEEE J-STARS*, 12(7), 2217–2226.
+- Jacob, B., et al. (2018). Quantization and training of neural networks for efficient integer-arithmetic-only inference. *CVPR*.
+- Krishnamoorthi, R. (2018). Quantizing deep convolutional networks for efficient inference: A whitepaper. *arXiv:1806.08342*.
+- Nagel, M., et al. (2021). A white paper on neural network quantization. *arXiv:2106.08295*.
+- Sandler, M., et al. (2018). MobileNetV2: Inverted residuals and linear bottlenecks. *CVPR*.
+- Tan, M., & Le, Q. V. (2019). EfficientNet: Rethinking model scaling for convolutional neural networks. *ICML*.
+- Zhao, S., et al. (2023). Land use and land cover classification meets deep learning: A review. *Sensors*, 23(21), 8966.
