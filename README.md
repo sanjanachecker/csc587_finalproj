@@ -212,12 +212,6 @@ python src/benchmark.py --all
 python src/evaluate.py --all
 ```
 
-## Task Split
-
-- **Sanjana** (modeling and implementation, weeks 1–5): data setup, FP32 training, custom FakeQuantize module, PyTorch PTQ baselines, layer-wise sensitivity analysis.
-- **Sofija** (evaluation and reporting, weeks 4–6): per-class degradation analysis, latency and size benchmarking, all visualizations (confusion matrices, ΔF1 heatmaps, layer-sensitivity plots, misclassification grids, Pareto plots), bulk of the final report write-up.
-- **Both:** per-class sensitivity analysis (handoff point), final report cross-review.
-
 ## References
 
 - Helber, P., Bischke, B., Dengel, A., & Borth, D. (2019). EuroSAT: A novel dataset and deep learning benchmark for land use and land cover classification. *IEEE J-STARS*, 12(7), 2217–2226.
