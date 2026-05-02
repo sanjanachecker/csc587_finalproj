@@ -1,0 +1,57 @@
+# Virtual environment
+.venv/
+venv/
+env/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# Data (EuroSAT downloads can be large)
+data/raw/
+data/processed/
+*.zip
+*.tar
+*.tar.gz
+*.h5
+*.hdf5
+
+# Model checkpoints & weights
+results/checkpoints/
+*.pth
+*.pt
+*.ckpt
+
+# Results / outputs (keep directory structure, ignore contents)
+results/figures/
+results/logs/
+results/metrics/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Colab / Google Drive
+*.gdown_cache
+
+# Environment variables
+.env
+.env.*
