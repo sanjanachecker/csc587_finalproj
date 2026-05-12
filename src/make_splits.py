@@ -20,7 +20,7 @@ def main(raw_dir: Path, out_dir: Path, seed: int = 42):
         if not cls_dir.exists():
             raise FileNotFoundError(f"Missing class folder: {cls_dir}")
         for img in sorted(cls_dir.glob("*.jpg")):
-            paths.append(str(img.relative_to(raw_dir.parent)))
+            paths.append(str(img.relative_to(raw_dir)))
             labels.append(idx)
 
     print(f"Found {len(paths)} images across {len(CLASSES)} classes")
