@@ -99,11 +99,11 @@ The project runs over six project weeks (quarter weeks 5–10). Each week has ex
 
 **Goal:** Working dataloader, sanity-checked class balance, and the scaffolding for the training loop.
 
-- [ ] Install dependencies and verify GPU access in Colab.
-- [ ] Download EuroSAT RGB to `data/raw/`.
-- [ ] Implement `src/make_splits.py` to produce stratified CSV splits.
-- [ ] Implement `src/dataset.py` with `EuroSATRGB` Dataset class and `get_dataloaders` helper.
-- [ ] Notebook `01_data_exploration.ipynb`: visualize a batch, compute per-class counts, sanity-check the splits.
+- [x] Install dependencies and verify GPU access in Colab.
+- [x] Download EuroSAT RGB to `data/raw/`.
+- [x] Implement `src/make_splits.py` to produce stratified CSV splits.
+- [x] Implement `src/dataset.py` with `EuroSATRGB` Dataset class and `get_dataloaders` helper.
+- [x] Notebook `01_data_exploration.ipynb`: visualize a batch, compute per-class counts, sanity-check the splits.
 
 **Milestone:** Working dataloader, batch visualization, and class-balance stats committed.
 
@@ -111,10 +111,10 @@ The project runs over six project weeks (quarter weeks 5–10). Each week has ex
 
 **Goal:** Two trained FP32 classifiers with full classification metrics.
 
-- [ ] Implement `src/models.py` with EfficientNet-B0 and MobileNetV2 wrappers (ImageNet pretrained, 10-way classification head).
-- [ ] Implement `src/train.py` (cross-entropy loss, Adam optimizer, 30–50 epochs, early stopping on validation accuracy).
-- [ ] Implement `src/evaluate.py` (accuracy, macro-F1, per-class F1, confusion matrix).
-- [ ] Train both architectures, save checkpoints to `results/checkpoints/`.
+- [x] Implement `src/models.py` with EfficientNet-B0 and MobileNetV2 wrappers (ImageNet pretrained, 10-way classification head).
+- [x] Implement `src/train.py` (cross-entropy loss, Adam optimizer, 30–50 epochs, early stopping on validation accuracy).
+- [x] Implement `src/evaluate.py` (accuracy, macro-F1, per-class F1, confusion matrix).
+- [x] Train both architectures, save checkpoints to `results/checkpoints/`.
 - [ ] Notebook `02_fp32_baselines.ipynb`: full evaluation report with confusion matrices.
 
 **Milestone:** Two FP32 baselines with all classification metrics reported.
@@ -125,13 +125,13 @@ The project runs over six project weeks (quarter weeks 5–10). Each week has ex
 
 **Goal:** Working from-scratch quantization module with passing unit tests.
 
-- [ ] Implement `src/fake_quant.py`:
+- [x] Implement `src/fake_quant.py`:
   - `FakeQuantize` module: forward pass applies `q = round(x / s) + z` and back, no parameter learning.
   - `QConv2d` and `QLinear` wrappers that quantize both weights and activations.
   - Fixed `scale` and `zero_point` set externally (no learnable params; this is PTQ, not QAT).
-- [ ] Implement `src/calibrate.py`: forward hooks that record per-tensor activation min/max during a calibration pass over 256 stratified images.
-- [ ] Implement `src/quantize.py`: walk a trained FP32 model's module tree and replace `Conv2d`/`Linear` with their quantized counterparts using the calibrated scales.
-- [ ] Notebook `03_fakequant_unit_tests.ipynb`: verify against `torch.quantize_per_tensor` on synthetic tensors. Round-trip error should be near-zero up to floating-point precision.
+- [x] Implement `src/calibrate.py`: forward hooks that record per-tensor activation min/max during a calibration pass over 256 stratified images.
+- [x] Implement `src/quantize.py`: walk a trained FP32 model's module tree and replace `Conv2d`/`Linear` with their quantized counterparts using the calibrated scales.
+- [x] Notebook `03_fakequant_unit_tests.ipynb`: verify against `torch.quantize_per_tensor` on synthetic tensors. Round-trip error should be near-zero up to floating-point precision.
 
 **Milestone:** Custom FakeQuantize module with unit tests passing.
 
