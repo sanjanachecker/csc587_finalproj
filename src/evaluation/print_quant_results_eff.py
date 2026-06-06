@@ -5,6 +5,7 @@ sys.path.insert(0, str(_SRC / 'models'))
 sys.path.insert(0, str(_SRC / 'quantization'))
 sys.path.insert(0, str(_SRC / 'evaluation'))
 
+# pyrefly: ignore [missing-import]
 import torch
 from models import build_model
 from dataset import get_dataloaders
