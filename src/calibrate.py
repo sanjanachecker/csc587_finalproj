@@ -50,7 +50,7 @@ def _compute_scale_zp(x_min: float, x_max: float, n_bits: int = 8):
     # Guard against degenerate constant-activation layers
     if x_max == x_min:
         x_max = x_min + 1e-6
-    scale      = (x_max - x_min) / (q_max - q_min)
+    scale = (x_max - x_min) / (q_max - q_min)
     zero_point = int(round(-x_min / scale))
     zero_point = max(q_min, min(q_max, zero_point))
     return scale, zero_point
@@ -64,7 +64,7 @@ class _MinMaxCollector:
     """Accumulates the global min and max seen across all calibration batches."""
 
     def __init__(self) -> None:
-        self.min_val =  float("inf")
+        self.min_val = float("inf")
         self.max_val = -float("inf")
 
     def update(self, x: torch.Tensor) -> None:
@@ -84,7 +84,7 @@ class _PercentileCollector:
     """
 
     def __init__(self, p_low: float = 0.001, p_high: float = 0.999) -> None:
-        self.p_low  = p_low
+        self.p_low = p_low
         self.p_high = p_high
         self._buf: List[torch.Tensor] = []
 
@@ -108,10 +108,10 @@ class _PercentileCollector:
 # ---------------------------------------------------------------------------
 
 def calibrate(
-    model:      nn.Module,
+    model: nn.Module,
     dataloader: DataLoader,
-    n_images:   int = 256,
-    device:     str | torch.device = "cpu",
+    n_images: int = 256,
+    device: str | torch.device = "cpu",
     use_percentile: bool = False,
 ) -> None:
     """
@@ -189,7 +189,7 @@ def calibrate(
                 break
             # Only take what we need from this batch
             remaining = n_images - images_seen
-            images    = images[:remaining].to(device)
+            images = images[:remaining].to(device)
 
             model(images)
             images_seen += images.shape[0]
@@ -212,7 +212,7 @@ def calibrate(
     n_calibrated = 0
     for module, collector in collectors.items():
         x_min, x_max = collector.result()
-        scale, zp    = _compute_scale_zp(x_min, x_max)
+        scale, zp = _compute_scale_zp(x_min, x_max)
         module.act_fq.set_calibration(scale, zp)
         n_calibrated += 1
 
@@ -248,7 +248,7 @@ def print_calibration_summary(model: nn.Module) -> None:
             wfq = module.weight_fq
             afq = module.act_fq
             w_scale = f"{wfq.scale.item():.6f}" if wfq.calibrated else "—"
-            w_zp    = f"{wfq.zero_point.item()}"  if wfq.calibrated else "—"
+            w_zp = f"{wfq.zero_point.item()}"  if wfq.calibrated else "—"
             a_scale = f"{afq.scale.item():.6f}"   if afq.calibrated else "NOT SET"
-            a_zp    = f"{afq.zero_point.item()}"  if afq.calibrated else "NOT SET"
+            a_zp = f"{afq.zero_point.item()}"  if afq.calibrated else "NOT SET"
             print(f"{name:<55} {w_scale:>10} {w_zp:>6} {a_scale:>10} {a_zp:>6}")
