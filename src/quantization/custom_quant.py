@@ -1,3 +1,9 @@
+import sys
+from pathlib import Path
+_SRC = Path(__file__).parent.parent   # src/
+sys.path.insert(0, str(_SRC / 'models'))
+sys.path.insert(0, str(_SRC / 'quantization'))
+
 import torch
 from models import build_model
 from quantize import quantize_model, print_quantization_summary

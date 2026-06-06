@@ -1,3 +1,10 @@
+import sys
+from pathlib import Path
+_SRC = Path(__file__).parent.parent   # src/
+sys.path.insert(0, str(_SRC / 'models'))
+sys.path.insert(0, str(_SRC / 'quantization'))
+sys.path.insert(0, str(_SRC / 'evaluation'))
+
 import torch
 from models import build_model
 from dataset import get_dataloaders

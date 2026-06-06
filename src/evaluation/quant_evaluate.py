@@ -30,6 +30,13 @@ from sklearn.metrics import (
     classification_report,
 )
 
+import sys
+from pathlib import Path
+_SRC = Path(__file__).parent.parent   # src/
+sys.path.insert(0, str(_SRC / 'models'))
+sys.path.insert(0, str(_SRC / 'quantization'))
+sys.path.insert(0, str(_SRC / 'evaluation'))
+
 from dataset import CLASSES
 
 
